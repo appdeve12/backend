@@ -1,24 +1,21 @@
 const { Client, LocalAuth } = require('whatsapp-web.js');
 const os = require('os');
 
-const sessionIds = ['9540215846'];
+// Sessions you want to run simultaneously
+const sessionIds = ['7985490508', '9540215846'];
 const clients = {};
 
-console.log("🔄 Initializing WhatsApp sessions...");
-
-// ✅ Function to get Chrome/Chromium path based on OS
+// Function to get Chrome executable path based on OS
 function getChromeExecutablePath() {
   const platform = os.platform();
 
   if (platform === 'win32') {
-    // Windows
     return 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe';
   } else if (platform === 'darwin') {
-    // macOS
     return '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
   } else {
-    // Linux (deployment)
-    return '/usr/bin/google-chrome'; // or '/usr/bin/google-chrome' if you're using Google Chrome
+    // Linux - path for Chrome on Ubuntu EC2 (after installing chrome)
+    return '/usr/bin/google-chrome';
   }
 }
 
@@ -28,13 +25,21 @@ sessionIds.forEach(id => {
     puppeteer: {
       headless: true,
       executablePath: getChromeExecutablePath(),
-      args: ['--no-sandbox', '--disable-setuid-sandbox'],
-    },
+      args: [
+        '--no-sandbox',
+        '--disable-setuid-sandbox',
+        '--disable-dev-shm-usage',
+        '--single-process',
+        '--disable-extensions',
+        '--disable-gpu'
+      ]
+    }
   });
 
   client.on('ready', () => console.log(`✅ WhatsApp client ${id} ready`));
-  client.on('auth_failure', msg => console.error(`❌ Auth failure for ${id}:`, msg));
-  client.on('disconnected', reason => console.warn(`⚠️ Disconnected ${id}:`, reason));
+  client.on('auth_failure', () => console.log(`❌ WhatsApp client ${id} auth failed`));
+  client.on('disconnected', reason => console.log(`⚠️ WhatsApp client ${id} disconnected:`, reason));
+  client.on('qr', qr => console.log(`QR code for ${id}:\n${qr}`));
 
   client.initialize();
   clients[id] = client;
